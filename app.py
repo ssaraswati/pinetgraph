@@ -2,10 +2,12 @@
 import socket
 import pyping
 import time
-EPD_WIDTH       = 128
-EPD_HEIGHT      = 250
+import sys
+frames = 0
 image_height, image_width = (250, 128)
 hostname = socket.gethostname() 
+print "hostname: " + hostname
+print "Starting Pynet..."
 if hostname == "raspberrypi":
     import Image
     import ImageDraw
@@ -24,25 +26,30 @@ test_file = 'sample-out.jpg'
 ping_host = 'google.com.au'
 
 graph_width = (image_width - 100) / 3
-ping_data = [1] * 50
+ping_data = [2] * 50
 
 font_big = ImageFont.truetype('./FreeMonoBold.ttf', 12)
 font_medium = ImageFont.truetype('./runescape_uf.ttf', 16)
 font_small = ImageFont.truetype('./Super_Mario_World_Text_Box.ttf', 7)
 
-
+print "Loaded Fonts"
 def newBlankImage():
     image = Image.new('1', (image_width, image_height), 255) 
     image = image.rotate(90, expand=1)
     draw = ImageDraw.Draw(image)
     return image, draw
 
-def draw_image(image_to_draw):
+def draw_image(image_to_draw, frames):
     if hostname == "raspberrypi":
         epd.clear_frame_memory(0xFF)
         image_up = image.rotate(90, expand=1)
         epd.set_frame_memory(image_up, 0, 0)
         epd.display_frame()
+        if frames == 0 or frames % 100 == 0:
+            epd.init(epd.lut_full_update)
+        else:
+            epd.init(epd.lut_partial_update)
+        return frames + 1
     else:
         image_to_draw.save(test_file)
 
@@ -57,7 +64,6 @@ def draw_graph(graph_data):
         offset += 3
     return image
 
-
     
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -66,7 +72,7 @@ ip = s.getsockname()[0]
 s.close()
 ip_output = '{0:10s}'.format(ip)
 
-font = ImageFont.truetype('./FreeMonoBold.ttf', 12)
+print "Network Socket opened and closed"
 # Draw device Ip
 image, draw = newBlankImage()
 
@@ -75,16 +81,13 @@ draw.rectangle((5, 30, 128, 50), fill = 255, outline= 0)
 draw.text((35, 14), 'Starting...', font = font_medium, fill = 255)
 draw.text((35, 36), ip_output, font = font_medium, fill = 0)
 
+print "Trying to draw first frame"
+frames = draw_image(image, frames)
+print "Drew first frame :)"
 
-draw_image(image)
-
-# for partial update
-if hostname == "raspberrypi":
-    frames = 0
-    epd.init(epd.lut_partial_update)
 ###########
 ip_public = load(urlopen('http://jsonip.com'))['ip']
-
+print "Starting ping loop"
 while True:
     image, draw = newBlankImage()
     
@@ -92,26 +95,20 @@ while True:
     ip_output = '{0:20s}<{1:5}>{2:>20s}'.format(ip_public, time.strftime('%H:%M'), ping_host)   
 
     r = pyping.ping(ping_host)
-    print r.avg_rtt
     ping_avg = float(r.avg_rtt)
     ping_output = '         {0:15.0f}ms'.format(ping_avg)
 
     draw.rectangle((0, 0, image_width, image_height), fill = 255)
     draw.rectangle((1, 20, 249, 1), fill = 255, outline= 0)
     draw.text((5, 1), ip_output, font=font_medium, fill=0)
-    draw.rectangle((150, 80, 250, 121), fill = 255, outline= 0)
+    draw.rectangle((150, 90, 250, 121), fill = 255, outline= 0)
     draw.text((150, 105), ping_output, font=font_medium, fill=0)
     ping_data.pop(0)
     ping_data.append(int(ping_avg))
     graph = draw_graph(ping_data)
     image.paste(graph, (0,22)) 
-    draw_image(image)
-    if hostname == "raspberrypi":
-        frames += 1
-        if frames % 10 == 0:
-            epd.init(epd.lut_full_update)
-        else:
-            epd.init(epd.lut_partial_update)
+    frames = draw_image(image, frames)
+        
 
 
 

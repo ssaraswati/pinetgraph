@@ -1,3 +1,4 @@
 pyping
 spidev
 Pillow
+scapy.all
