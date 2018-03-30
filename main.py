@@ -26,36 +26,38 @@
 
 import epd2in13
 import time
-from PIL import Image, ImageDraw, ImageFont
+import Image
+import ImageDraw
+import ImageFont
 
 def main():
     epd = epd2in13.EPD()
     epd.init(epd.lut_full_update)
 
-    # # For simplicity, the arguments are explicit numerical coordinates
-    # image = Image.new('1', (epd2in13.EPD_WIDTH, epd2in13.EPD_HEIGHT), 255)  # 255: clear the frame
-    # draw = ImageDraw.Draw(image)
-    # font = ImageFont.truetype('./FreeMonoBold.ttf', 12)
-    # draw.rectangle((0, 10, 128, 30), fill = 0)
-    # draw.text((30, 14), 'Hello world!', font = font, fill = 255)
-    # draw.text((30, 36), 'e-Paper Demo', font = font, fill = 0)
-    # draw.line((16, 60, 56, 60), fill = 0)
-    # draw.line((56, 60, 56, 110), fill = 0)
-    # draw.line((16, 110, 56, 110), fill = 0)
-    # draw.line((16, 110, 16, 60), fill = 0)
-    # draw.line((16, 60, 56, 110), fill = 0)
-    # draw.line((56, 60, 16, 110), fill = 0)
-    # draw.arc((70, 60, 130, 120), 0, 360, fill = 0)
-    # draw.rectangle((16, 130, 56, 180), fill = 0)
-    # draw.chord((70, 130, 130, 190), 0, 360, fill = 0)
+    # For simplicity, the arguments are explicit numerical coordinates
+    image = Image.new('1', (epd2in13.EPD_WIDTH, epd2in13.EPD_HEIGHT), 255)  # 255: clear the frame
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', 12)
+    draw.rectangle((0, 10, 128, 30), fill = 0)
+    draw.text((30, 14), 'Hello world!', font = font, fill = 255)
+    draw.text((30, 36), 'e-Paper Demo', font = font, fill = 0)
+    draw.line((16, 60, 56, 60), fill = 0)
+    draw.line((56, 60, 56, 110), fill = 0)
+    draw.line((16, 110, 56, 110), fill = 0)
+    draw.line((16, 110, 16, 60), fill = 0)
+    draw.line((16, 60, 56, 110), fill = 0)
+    draw.line((56, 60, 16, 110), fill = 0)
+    draw.arc((70, 60, 130, 120), 0, 360, fill = 0)
+    draw.rectangle((16, 130, 56, 180), fill = 0)
+    draw.chord((70, 130, 130, 190), 0, 360, fill = 0)
     
-    # epd.clear_frame_memory(0xFF)
-    # epd.set_frame_memory(image, 0, 0)
-    # epd.display_frame()
+    epd.clear_frame_memory(0xFF)
+    epd.set_frame_memory(image, 0, 0)
+    epd.display_frame()
 
-    # epd.delay_ms(2000)
+    epd.delay_ms(2000)
 
-    # # for partial update
+    # for partial update
     epd.init(epd.lut_partial_update)
     image = Image.open('monocolor.bmp')
 ##
@@ -71,7 +73,7 @@ def main():
 
     time_image = Image.new('1', (96, 32), 255)  # 255: clear the frame
     draw = ImageDraw.Draw(time_image)
-    font = ImageFont.truetype('./VCR_OSD_MONO_1.001.ttf', 21)
+    font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', 32)
     image_width, image_height  = time_image.size
     while (True):
         # draw a rectangle to clear the image
