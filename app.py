@@ -3,6 +3,8 @@ import socket
 import pyping
 import time
 import sys
+from json import load
+from urllib2 import urlopen
 frames = 0
 image_height, image_width = (250, 128)
 hostname = socket.gethostname() 
@@ -15,22 +17,20 @@ if hostname == "raspberrypi":
     import epd2in13
     epd = epd2in13.EPD()
     epd.init(epd.lut_full_update)
+    font_base = '/home/pi/pynet/'
 else:
     from PIL import Image, ImageDraw, ImageFont
+    font_base = './'
 
-
-from json import load
-from urllib2 import urlopen
 
 test_file = 'sample-out.jpg'
-ping_host = 'google.com.au'
+ping_host = '8.8.8.8'
 
-graph_width = (image_width - 100) / 3
-ping_data = [2] * 50
+ping_data = [5] * 50
 
-font_big = ImageFont.truetype('./FreeMonoBold.ttf', 12)
-font_medium = ImageFont.truetype('./runescape_uf.ttf', 16)
-font_small = ImageFont.truetype('./Super_Mario_World_Text_Box.ttf', 7)
+font_big = ImageFont.truetype(font_base + 'FreeMonoBold.ttf', 12)
+font_medium = ImageFont.truetype(font_base + 'runescape_uf.ttf', 16)
+font_small = ImageFont.truetype(font_base + 'Super_Mario_World_Text_Box.ttf', 7)
 
 print "Loaded Fonts"
 def newBlankImage():
@@ -46,15 +46,16 @@ def draw_image(image_to_draw, frames):
         epd.set_frame_memory(image_up, 0, 0)
         epd.display_frame()
         if frames == 0 or frames % 100 == 0:
+            print frames + " have been drawing doing a full update of display"
             epd.init(epd.lut_full_update)
         else:
             epd.init(epd.lut_partial_update)
-        return frames + 1
     else:
         image_to_draw.save(test_file)
+    return frames + 1
 
 
-def draw_graph(graph_data):
+def add_graph_to_image(parent_image, graph_data, x, y):
     image = Image.new('1', (150, 100), 255) 
     draw = ImageDraw.Draw(image)
     offset = 0
@@ -62,53 +63,65 @@ def draw_graph(graph_data):
         height = int(point / 2)
         draw.rectangle([(offset, 100), (offset + 3, 100 - height)], 0)
         offset += 3
-    return image
+    parent_image.paste(image, (x, y))
 
-    
+def draw_spinner(drawobj, x, y, flag):
+    drawobj.rectangle((0 + x, 0 + y, 10 + x, 10 + y), fill = 0 if flag else 255 , outline= 0)
+    drawobj.rectangle((10 + x, 0 + y, 20 + x, 10 + y), fill = 255 if flag else 0, outline= 0)
 
-s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-s.connect(("8.8.8.8", 80))
-ip = s.getsockname()[0]
-s.close()
-ip_output = '{0:10s}'.format(ip)
+    drawobj.rectangle((0 + x, 10 + y, 10 + x, 20 + y), fill = 255 if flag else 0, outline= 0)
+    drawobj.rectangle((10 + x, 10 + y, 20 + x, 20 + y), fill = 0 if flag else 255, outline= 0)
 
-print "Network Socket opened and closed"
-# Draw device Ip
-image, draw = newBlankImage()
+def draw_top_bar(drawobj, ip_left, ip_right):
+    ip_output = '{0:24s}<{1:5}>{2:>24s}'.format(ip_left, time.strftime('%H:%M'), ip_right)   
+    draw.rectangle((1, 20, 249, 1), fill = 255, outline= 0)
+    draw.text((5, 1), ip_output, font=font_medium, fill=0)
 
-draw.rectangle((5, 10, 128, 30), fill = 0)
-draw.rectangle((5, 30, 128, 50), fill = 255, outline= 0)
-draw.text((35, 14), 'Starting...', font = font_medium, fill = 255)
-draw.text((35, 36), ip_output, font = font_medium, fill = 0)
+def make_startup_images():
+    image, draw = newBlankImage()
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip = s.getsockname()[0]
+    s.close()
+    ip_output = '{0:10s}'.format(ip)
+    draw.rectangle((5, 10, 128, 30), fill = 0)
+    draw.rectangle((5, 30, 128, 50), fill = 255, outline= 0)
+    draw.text((35, 14), 'Starting...', font = font_medium, fill = 255)
+    draw.text((35, 36), ip_output, font = font_medium, fill = 0)
+    return image 
+###########
+
+
 
 print "Trying to draw first frame"
-frames = draw_image(image, frames)
-print "Drew first frame :)"
+frames = draw_image(make_startup_images(), frames)
+print "First frame drawn successfully"
 
-###########
+
 ip_public = load(urlopen('http://jsonip.com'))['ip']
 print "Starting ping loop"
 while True:
     image, draw = newBlankImage()
     
 
-    ip_output = '{0:20s}<{1:5}>{2:>20s}'.format(ip_public, time.strftime('%H:%M'), ping_host)   
+    ping_avg = -1
+    try:
+        r = pyping.ping(ping_host)
+        ping_avg = float(r.avg_rtt)
+    except Exception as ex:
+        print ex.message
 
-    r = pyping.ping(ping_host)
-    ping_avg = float(r.avg_rtt)
-    ping_output = '         {0:15.0f}ms'.format(ping_avg)
+    ping_output = '{0:15.0f}ms'.format(ping_avg)
 
     draw.rectangle((0, 0, image_width, image_height), fill = 255)
-    draw.rectangle((1, 20, 249, 1), fill = 255, outline= 0)
-    draw.text((5, 1), ip_output, font=font_medium, fill=0)
-    draw.rectangle((150, 90, 250, 121), fill = 255, outline= 0)
+    draw_top_bar(draw, ip_public, ping_host)
+
+    draw.rectangle((150, 101, 250, 121), fill = 255, outline= 0)
     draw.text((150, 105), ping_output, font=font_medium, fill=0)
+    draw_spinner(draw, 230, 101, frames % 2 == 0)
+
     ping_data.pop(0)
     ping_data.append(int(ping_avg))
-    graph = draw_graph(ping_data)
-    image.paste(graph, (0,22)) 
-    frames = draw_image(image, frames)
-        
-
-
+    add_graph_to_image(image, ping_data, 0, 22)
+    frames = draw_image(image, frames)    
 
