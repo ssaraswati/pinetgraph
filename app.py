@@ -26,12 +26,10 @@ else:
 test_file = 'sample-out.jpg'
 ping_host = 'google.com'
 
-ping_data = [5] * 50 # need data in list to start
+ping_data = [0] * 50 # need data in list to start
 fail_count = 0
 font_large = ImageFont.truetype(font_base + 'Roboto-Medium.ttf', 32)
-font_big = ImageFont.truetype(font_base + 'VCR_OSD_MONO_1.001.ttf', 21)
 font_medium = ImageFont.truetype(font_base + 'runescape_uf.ttf', 16)
-font_small = ImageFont.truetype(font_base + 'Super_Mario_World_Text_Box.ttf', 7)
 
 print "Loaded Fonts"
 def newBlankImage():
@@ -67,11 +65,11 @@ def add_graph_to_image(parent_image, graph_data, x, y):
     parent_image.paste(image, (x, y))
 
 def draw_spinner(drawobj, x, y, flag):
-    drawobj.rectangle((0 + x, 0 + y, 5 + x, 5 + y), fill = 0 if flag else 255 , outline= 0)
-    drawobj.rectangle((5 + x, 0 + y, 10 + x, 5 + y), fill = 255 if flag else 0, outline= 0)
+    drawobj.rectangle((0 + x, 0 + y, 10 + x, 10 + y), fill = 0 if flag else 255 , outline= 0)
+    drawobj.rectangle((10 + x, 0 + y, 20 + x, 10 + y), fill = 255 if flag else 0, outline= 0)
 
-    drawobj.rectangle((0 + x, 5 + y, 5 + x, 10 + y), fill = 255 if flag else 0, outline= 0)
-    drawobj.rectangle((5 + x, 5 + y, 10 + x, 10 + y), fill = 0 if flag else 255, outline= 0)
+    drawobj.rectangle((0 + x, 10 + y, 10 + x, 20 + y), fill = 255 if flag else 0, outline= 0)
+    drawobj.rectangle((10 + x, 10 + y, 20 + x, 20 + y), fill = 0 if flag else 255, outline= 0)
 
 def draw_top_bar(drawobj, ip_left, ip_right):
     drawobj.rectangle((1, 20, 249, 1), fill = 255, outline= 0)
@@ -79,12 +77,9 @@ def draw_top_bar(drawobj, ip_left, ip_right):
     ip_output = '{0:21s}<{1:5}>{2:>21s}'.format(ip_left, time.strftime('%H:%M'), ip_right)   
     drawobj.text((5, 1), ip_output, font=font_medium, fill=0)
 
-def make_startup_image():
+def make_startup_image(ip):
     image, draw = newBlankImage()
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("google.com", 80))
-    ip = s.getsockname()[0]
-    s.close()
+
     ip_output = '{0:10s}'.format(ip)
     draw.rectangle((5, 10, 128, 30), fill = 0)
     draw.rectangle((5, 30, 128, 50), fill = 255, outline= 0)
@@ -94,15 +89,18 @@ def make_startup_image():
     return image 
 ###########
 
-
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.connect(("google.com", 80))
+ip_local = s.getsockname()[0]
+s.close()
 
 print "Trying to draw first frame"
-image = make_startup_image()
+image = make_startup_image(ip_local)
 frames = write_image(image, frames)
 print "First frame drawn successfully"
 
 
-ip_public = load(urlopen('http://jsonip.com'))['ip']
+
 print "Starting ping loop"
 while True:
     image, draw = newBlankImage()
@@ -129,20 +127,20 @@ while True:
     draw.text((150, 20), ping_output, font=font_large, fill=255)
 
     # top
-    draw_top_bar(draw, ip_public, r.destination_ip)
+    draw_top_bar(draw, ip_local, ping_host)
 
     # avg
     draw.rectangle((150, 61, 250, 81), fill = 255, outline= 0)
     draw.text((150, 64), ping_avg_output, font=font_medium, fill=0)
     
     # max
-    draw.rectangle((150, 81, 250, 101), fill = 0, outline= 255)
+    draw.rectangle((150, 81, 250, 101), fill = 0, outline= 0)
     draw.text((150, 84), ping_max_output, font=font_medium, fill=255)
 
     # drop
     draw.rectangle((150, 101, 250, 121), fill = 255, outline= 0)
     draw.text((150, 104), ping_drop_output, font=font_medium, fill=0)
-    draw_spinner(draw, 240, 111, frames % 2 == 0)
+    draw_spinner(draw, 230, 101, frames % 2 == 0)
 
     
     add_graph_to_image(image, ping_data, 0, 22)
